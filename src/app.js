@@ -52,6 +52,27 @@ app.post("/cadastro", async (req, res) => {
   }
 });
 
+app.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  let userValidate = [];
+
+  const usuarios = await db.collection("users").find().toArray();
+
+  try {
+    usuarios.forEach((element) => {
+      if (element.email === email && element.password === password) {
+        userValidate = [element];
+      }
+    });
+    if (userValidate.length === 0)
+      return res.status(401).send("Senha ou email invalido");
+
+    return res.send(userValidate[0]);
+  } catch (error) {
+    return res.status(500).send(error);
+  }
+});
+
 app.get("/extract", async (req, res) => {
   const { user } = req.headers;
   if (!user) return res.sendStatus(400);
@@ -88,13 +109,11 @@ app.post("/extract", async (req, res) => {
   }
 
   try {
-    await db
-      .collection("extract")
-      .insertOne({
-        user: token,
-        ...movement,
-        date: dayjs().format("DD/MM/YYYY"),
-      });
+    await db.collection("extract").insertOne({
+      user: token,
+      ...movement,
+      date: dayjs().format("DD/MM/YYYY"),
+    });
     return res.send("movimento cadastrado");
   } catch (error) {
     return res.send(error);
