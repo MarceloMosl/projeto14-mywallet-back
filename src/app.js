@@ -4,6 +4,7 @@ import Joi from "joi";
 import dotenv from "dotenv";
 import { MongoClient } from "mongodb";
 import dayjs from "dayjs";
+import bcrypt from "bcrypt";
 
 dotenv.config();
 
@@ -44,8 +45,14 @@ app.post("/cadastro", async (req, res) => {
 
   if (emailExist) return res.status(409).send("Email em uso");
 
+  const passwordEncript = bcrypt.hashSync(user.password, 10);
+
   try {
-    await db.collection("users").insertOne(user);
+    await db.collection("users").insertOne({
+      user: user.user,
+      email: user.email,
+      password: passwordEncript,
+    });
     res.status(200).send("usuario Cadastrado");
   } catch (error) {
     res.send(error);
@@ -56,20 +63,23 @@ app.post("/login", async (req, res) => {
   const { email, password } = req.body;
   let userValidate = [];
 
-  const usuarios = await db.collection("users").find().toArray();
+  const usuarios = await db.collection("users").findOne({ email });
+  console.log(usuarios);
 
   try {
-    usuarios.forEach((element) => {
-      if (element.email === email && element.password === password) {
-        userValidate = [element];
-      }
-    });
+    if (
+      usuarios.email === email &&
+      bcrypt.compareSync(password, usuarios.password)
+    ) {
+      userValidate = [usuarios];
+    }
+
     if (userValidate.length === 0)
       return res.status(401).send("Senha ou email invalido");
 
     return res.send(userValidate[0]);
   } catch (error) {
-    return res.status(500).send(error);
+    return res.status(500).send(error.message);
   }
 });
 
