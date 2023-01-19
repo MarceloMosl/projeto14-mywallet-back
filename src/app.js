@@ -36,7 +36,7 @@ app.post("/cadastro", async (req, res) => {
   }
 
   if (user.password !== user.confPassword)
-    res.status(400).send("Senhas diferentes");
+    return res.status(400).send("Senhas diferentes");
 
   const validateEmail = await db.collection("users").find().toArray();
 
@@ -133,4 +133,4 @@ app.post("/extract", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log("Servidor funfou"));
+app.listen(PORT, () => console.log("Server ON"));
