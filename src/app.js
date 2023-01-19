@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import { MongoClient } from "mongodb";
 import dayjs from "dayjs";
 import bcrypt from "bcrypt";
+import { v4 as uuid } from "uuid";
 
 dotenv.config();
 
@@ -61,50 +62,48 @@ app.post("/cadastro", async (req, res) => {
 
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
-  let userValidate = [];
 
-  const usuarios = await db.collection("users").findOne({ email });
-  console.log(usuarios);
+  const usuario = await db.collection("users").findOne({ email });
 
   try {
-    if (
-      usuarios.email === email &&
-      bcrypt.compareSync(password, usuarios.password)
-    ) {
-      userValidate = [usuarios];
-    }
+    const validate =
+      usuario.email === email && bcrypt.compareSync(password, usuario.password);
 
-    if (userValidate.length === 0)
-      return res.status(401).send("Senha ou email invalido");
+    if (!validate) return res.status(401).send("Senha ou email invalido");
 
-    return res.send(userValidate[0]);
+    const token = uuid();
+
+    await db.collection("sessions").insertOne({ userId: usuario._id, token });
+
+    return res.send({ token });
   } catch (error) {
     return res.status(500).send(error.message);
   }
 });
 
 app.get("/extract", async (req, res) => {
-  const { user } = req.headers;
-  if (!user) return res.sendStatus(400);
+  const { authorization } = req.headers;
+  const token = authorization?.replace("Bearer ", "");
+  if (!token) return res.status(400).send("Envie o Token");
 
-  const movements = await db.collection("extract").find().toArray();
+  const usuario = await db.collection("sessions").findOne({ token });
 
-  let extractList = [];
+  if (!usuario) return res.status(404).send("Usuario Deslogado");
 
-  movements.forEach((element) => {
-    if (element.user == user) {
-      extractList = [...extractList, element];
-    }
-  });
+  const movements = await db
+    .collection("extract")
+    .find({ user: usuario.userId })
+    .toArray();
 
-  res.status(200).send(extractList);
+  res.status(200).send(movements);
 });
 
 app.post("/extract", async (req, res) => {
-  const { token } = req.headers;
+  const { authorization } = req.headers;
+  const token = authorization?.replace("Bearer ", "");
   const movement = req.body;
 
-  if (!token) return res.sendStatus(400);
+  if (!token) return res.status(400).send("Envie o Token!");
 
   const schemaMovement = Joi.object({
     type: Joi.string().required(),
@@ -118,9 +117,13 @@ app.post("/extract", async (req, res) => {
     return res.status(422).send(validate.error.details[0].message);
   }
 
+  const schemaToken = await db.collection("sessions").findOne({ token });
+
+  if (!schemaToken) return res.status(422).send("usuario deslogado");
+
   try {
     await db.collection("extract").insertOne({
-      user: token,
+      user: schemaToken.userId,
       ...movement,
       date: dayjs().format("DD/MM/YYYY"),
     });
