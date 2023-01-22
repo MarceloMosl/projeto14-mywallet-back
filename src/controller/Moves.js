@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
-import Joi from "joi";
 import db from "../config/database.js";
+import { schemaMovement } from "../model/extractSchema.js";
 
 export async function getExtract(req, res) {
   const { authorization } = req.headers;
@@ -47,12 +47,6 @@ export async function postExtract(req, res) {
   const movement = req.body;
 
   if (!token) return res.status(400).send("Envie o Token!");
-
-  const schemaMovement = Joi.object({
-    type: Joi.string().required(),
-    value: Joi.number().required(),
-    desc: Joi.string().required(),
-  });
 
   const validate = schemaMovement.validate(movement, { abortEarly: false });
 
