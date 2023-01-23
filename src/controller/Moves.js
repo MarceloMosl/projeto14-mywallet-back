@@ -1,6 +1,5 @@
 import dayjs from "dayjs";
 import db from "../config/database.js";
-import { schemaMovement } from "../model/extractSchema.js";
 
 export async function getExtract(req, res) {
   const { authorization } = req.headers;
@@ -9,7 +8,7 @@ export async function getExtract(req, res) {
 
   const usuario = await db.collection("sessions").findOne({ token });
 
-  if (!usuario) return res.status(404).send("Usuario Deslogado");
+  if (!usuario) return res.status(408).send("Usuario Deslogado");
 
   const movements = await db
     .collection("extract")
@@ -48,15 +47,9 @@ export async function postExtract(req, res) {
 
   if (!token) return res.status(400).send("Envie o Token!");
 
-  const validate = schemaMovement.validate(movement, { abortEarly: false });
-
-  if (validate.error) {
-    return res.status(422).send(validate.error.details[0].message);
-  }
-
   const schemaToken = await db.collection("sessions").findOne({ token });
 
-  if (!schemaToken) return res.status(422).send("usuario deslogado");
+  if (!schemaToken) return res.status(408).send("usuario deslogado");
 
   try {
     await db.collection("extract").insertOne({

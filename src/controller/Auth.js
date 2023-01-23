@@ -1,15 +1,9 @@
 import bcrypt from "bcrypt";
 import { v4 as uuid } from "uuid";
 import db from "../config/database.js";
-import { schemaUser } from "../model/authSchema.js";
 
 export async function signUp(req, res) {
   const user = req.body;
-
-  const validate = schemaUser.validate(user, { abortEarly: false });
-  if (validate.error) {
-    return res.status(422).send(validate.error.details);
-  }
 
   if (user.password !== user.confPassword)
     return res.status(400).send("Senhas diferentes");
@@ -41,7 +35,7 @@ export async function login(req, res) {
 
   const usuario = await db.collection("users").findOne({ email });
 
-  if (!usuario) return res.status(404).send("Email ou Senha invalidos");
+  if (!usuario) return res.status(401).send("Email ou Senha invalidos");
 
   try {
     const validate =
